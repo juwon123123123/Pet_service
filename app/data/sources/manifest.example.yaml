@@ -1,0 +1,76 @@
+# 공식 가이드라인 PDF 매니페스트
+#
+# 사용법:
+#   1) PDF 파일을 이 폴더(app/data/sources/)에 다운로드해서 둔다.
+#   2) 이 파일을 manifest.yaml 로 복사해 본인 파일명에 맞게 수정한다.
+#   3) `python -m scripts.seed_knowledge` 를 실행하면 .md 시드 + PDF가 함께 적재된다.
+#
+# species:  dog | cat | both
+# category: vaccination | feeding | parasite | surgery | hygiene | checkup | training | lifestage
+# priority: high | normal | low
+# license:  배포 가능한 라이선스인지 메모 (저작권 확인 책임은 사용자에게 있음)
+
+sources:
+  - file: wsava_2024_vaccination_dogs_cats.pdf
+    source: WSAVA
+    year: 2024
+    title: Guidelines for the Vaccination of Dogs and Cats
+    species: both
+    category: vaccination
+    priority: high
+
+  - file: aaha_2022_canine_vaccination.pdf
+    source: AAHA
+    year: 2022
+    title: AAHA Canine Vaccination Guidelines (2024 update)
+    species: dog
+    category: vaccination
+    priority: high
+
+  - file: aaha_aafp_2020_feline_vaccination.pdf
+    source: AAHA/AAFP
+    year: 2020
+    title: AAHA/AAFP Feline Vaccination Guidelines
+    species: cat
+    category: vaccination
+    priority: high
+
+  - file: wsava_2011_global_nutrition.pdf
+    source: WSAVA GNC
+    year: 2011
+    title: WSAVA Global Nutrition Guidelines (Toolkit 2021)
+    species: both
+    category: feeding
+    priority: high
+
+  - file: aaha_2019_canine_life_stage.pdf
+    source: AAHA
+    year: 2019
+    title: AAHA Canine Life Stage Guidelines
+    species: dog
+    category: lifestage
+    priority: high
+
+  - file: aaha_aafp_2021_feline_life_stage.pdf
+    source: AAHA/AAFP
+    year: 2021
+    title: AAHA/AAFP Feline Life Stage Guidelines
+    species: cat
+    category: lifestage
+    priority: high
+
+  - file: capc_general_guidelines_dogs_cats.pdf
+    source: CAPC
+    year: 2024
+    title: CAPC General Guidelines for Dogs and Cats
+    species: both
+    category: parasite
+    priority: high
+
+  - file: fix_felines_by_five.pdf
+    source: AAHA / Fix Felines by Five
+    year: 2022
+    title: Fix Felines by Five — Early Spay/Neuter for Cats
+    species: cat
+    category: surgery
+    priority: high

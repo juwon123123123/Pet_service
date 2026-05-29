@@ -1,0 +1,50 @@
+# ── Secrets ────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# ── 로컬 DB / 벡터스토어 ─────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+chroma_store/
+
+# ── 임베딩 모델 캐시 ────────────────────────────────────────
+.cache/
+.huggingface/
+
+# ── IDE / OS ───────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── 테스트 / 개인 자료 ──────────────────────────────────────
+dog.png
+*.test.png
+*.test.jpg
+
+# ── 업로드 (개인 사진은 절대 커밋 X) ──────────────────────────
+uploads/pet_photos/
+uploads/generated/
+# 상품 사진(uploads/products/)은 시드용이므로 커밋 OK.
+# 저장소 크기를 줄이고 싶으면 아래 한 줄 주석 해제하면 모두 제외:
+# uploads/products/
+
+# ── 공식 가이드라인 PDF (저작권) ──────────────────────────────
+app/data/sources/*.pdf
+# manifest.yaml 은 실제 파일명을 노출하므로 사용자가 자신의 것을 두도록 .example만 커밋
+app/data/sources/manifest.yaml
+
+# ── 로그 ───────────────────────────────────────────────────
+*.log
+nohup.out
