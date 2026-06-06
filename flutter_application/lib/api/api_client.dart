@@ -1,24 +1,23 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:intl/intl.dart';
 
 import 'models.dart';
 
-/// 로컬 백엔드 base URL.
-/// - Android 에뮬레이터: 10.0.2.2 (호스트 머신의 127.0.0.1)
-/// - iOS 시뮬레이터/macOS/Web: 127.0.0.1
-/// - 실제 단말로 배포 시 PC IP나 도메인을 넣어 사용.
+/// API base URL.
+/// 기본값은 배포된 Cloud Run — 클론만 받아 `flutter run` 하면 바로 동작.
+///
+/// 로컬 백엔드로 개발할 때는 dart-define으로 덮어쓰기:
+///   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000   (안드 에뮬)
+///   flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000  (iOS/web/macOS)
+const _kProdBaseUrl = 'https://pet-times-901998453571.asia-northeast3.run.app';
+
 String _resolveBaseUrl() {
-  // dart-define으로 덮어쓸 수 있게: --dart-define=API_BASE_URL=http://x.x.x.x:8000
   const fromDefine = String.fromEnvironment('API_BASE_URL', defaultValue: '');
   if (fromDefine.isNotEmpty) return fromDefine;
-  if (kIsWeb) return 'http://127.0.0.1:8000';
-  if (Platform.isAndroid) return 'http://10.0.2.2:8000';
-  return 'http://127.0.0.1:8000';
+  return _kProdBaseUrl;
 }
 
 final _date = DateFormat('yyyy-MM-dd');
