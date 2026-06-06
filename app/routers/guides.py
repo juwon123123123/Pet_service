@@ -36,7 +36,6 @@ def create_guide(req: GuideRequest, db: Session = Depends(get_db)):
         query=_build_query(pet, req.topics),
         species=pet.species,
         age_weeks=weeks,
-        breed=pet.breed,
     )
     if not chunks:
         raise HTTPException(404, "관련 지식 문서를 찾지 못했습니다. 지식베이스를 먼저 적재하세요.")

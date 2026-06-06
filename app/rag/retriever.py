@@ -2,18 +2,17 @@
 pgvector 기반 검색 + 메타데이터 필터 + 휴리스틱 재순위.
 
 재순위 규칙(휴리스틱, 외부 모델 없이):
-  - 종 일치(+0.25)
-  - 펫 연령(주)이 age_min_weeks ~ age_max_weeks 범위 안 (+0.4)
-  - 범위 밖이지만 12주 이내로 인접 (+0.15)
+  - 종 일치(+0.35)
+  - 펫 연령(주)이 age_min_weeks ~ age_max_weeks 범위 안 (+0.55)
+  - 범위 밖이지만 12주 이내로 인접 (+0.20)
   - priority=high (+0.1)
-  - 품종이 명시되어 있고 일치 (+0.15)
 
 Postgres pgvector 가 코사인 거리(`<=>`)로 1차 회수 → Python에서 위 가중치 합산 후 재정렬.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -32,26 +31,25 @@ class RetrievedChunk:
 
 
 def _rerank_score(base: float, chunk: KnowledgeChunk, species: str,
-                  age_weeks: int, breed: Optional[str]) -> float:
+                  age_weeks: int) -> float:
     bonus = 0.0
 
+    # 종 일치 — 종이 다른 케어 정보는 의미가 없으므로 강하게 가산.
     if chunk.species == species:
-        bonus += 0.25
+        bonus += 0.35
 
+    # 나이 — 반려동물 케어에서 가장 결정적. 범위 적중에 최대 가중치.
     if chunk.age_min_weeks is not None and chunk.age_max_weeks is not None:
         amin, amax = chunk.age_min_weeks, chunk.age_max_weeks
         if amin <= age_weeks <= amax:
-            bonus += 0.4
+            bonus += 0.55
         else:
             gap = min(abs(age_weeks - amin), abs(age_weeks - amax))
             if gap <= 12:
-                bonus += 0.15
+                bonus += 0.20
 
     if chunk.priority == "high":
         bonus += 0.1
-
-    if breed and chunk.breed and breed.lower() == chunk.breed.lower():
-        bonus += 0.15
 
     return base + bonus
 
@@ -69,7 +67,6 @@ def search(
     query: str,
     species: str,
     age_weeks: int,
-    breed: Optional[str] = None,
     top_k: int | None = None,
     pool_k: int = 20,
 ) -> list[RetrievedChunk]:
@@ -94,7 +91,7 @@ def search(
     scored: list[RetrievedChunk] = []
     for chunk, dist in results:
         base = 1.0 - float(dist)  # 코사인 distance → similarity
-        score = _rerank_score(base, chunk, species, age_weeks, breed)
+        score = _rerank_score(base, chunk, species, age_weeks)
         scored.append(_to_retrieved(chunk, score))
 
     scored.sort(key=lambda c: c.score, reverse=True)

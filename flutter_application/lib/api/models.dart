@@ -208,20 +208,6 @@ class GuideSection {
       );
 }
 
-class ChatAnswer {
-  final String answer;
-  final List<Citation> citations;
-
-  ChatAnswer({required this.answer, required this.citations});
-
-  factory ChatAnswer.fromJson(Map<String, dynamic> j) => ChatAnswer(
-        answer: j['answer'] as String,
-        citations: (j['citations'] as List)
-            .map((c) => Citation.fromJson(c as Map<String, dynamic>))
-            .toList(),
-      );
-}
-
 class Product {
   final int id;
   final String name;

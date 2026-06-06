@@ -9,9 +9,8 @@ LLM은 절대 날짜를 만들지 않습니다. 모든 due_date는
 
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any
 
-from app.rag.retriever import RetrievedChunk, all_relevant_for_schedule
+from app.rag.retriever import all_relevant_for_schedule
 
 
 @dataclass
