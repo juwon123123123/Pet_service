@@ -1,17 +1,15 @@
 """
 Google Gemini 2.5 Flash Image (a.k.a. "nano-banana") 합성 호출.
 
-입력: 펫 사진 + 상품 사진 + 프롬프트
+입력: 펫 사진 바이트 + 상품 사진 바이트 + 프롬프트
 출력: 합성된 이미지 바이트 (PNG/JPEG)
 
-API key가 없으면 RuntimeError 발생. 호출부에서 catch해서 Generation.status='failed' 로 기록.
+API key가 없거나 응답에 이미지 파트가 없으면 RuntimeError.
 """
 from __future__ import annotations
 
 import asyncio
-import mimetypes
 from functools import lru_cache
-from pathlib import Path
 
 from google import genai
 from google.genai import types
@@ -28,11 +26,6 @@ def _client() -> genai.Client:
     return genai.Client(api_key=settings.google_api_key)
 
 
-def _mime(path: Path) -> str:
-    m, _ = mimetypes.guess_type(str(path))
-    return m or "image/jpeg"
-
-
 _PROMPT_TEMPLATE = (
     "아래 첫 번째 이미지의 {species_ko} '{pet_name}'에게 두 번째 이미지의 상품"
     "({product_name}, 카테고리: {category})을 자연스럽게 착용/배치한 합성 사진을 만들어주세요."
@@ -42,8 +35,10 @@ _PROMPT_TEMPLATE = (
 
 
 def generate_composite(
-    pet_photo_path: Path,
-    product_photo_path: Path,
+    pet_photo_bytes: bytes,
+    pet_photo_mime: str,
+    product_photo_bytes: bytes,
+    product_photo_mime: str,
     pet_name: str,
     species: str,
     product_name: str,
@@ -60,19 +55,15 @@ def generate_composite(
         category=category,
     )
 
-    pet_bytes = pet_photo_path.read_bytes()
-    product_bytes = product_photo_path.read_bytes()
-
     resp = _client().models.generate_content(
         model=settings.gemini_image_model,
         contents=[
             prompt,
-            types.Part.from_bytes(data=pet_bytes, mime_type=_mime(pet_photo_path)),
-            types.Part.from_bytes(data=product_bytes, mime_type=_mime(product_photo_path)),
+            types.Part.from_bytes(data=pet_photo_bytes, mime_type=pet_photo_mime),
+            types.Part.from_bytes(data=product_photo_bytes, mime_type=product_photo_mime),
         ],
     )
 
-    # 응답 파트 중 inline_data(이미지)인 것을 첫 번째로 잡음.
     for cand in resp.candidates or []:
         for part in (cand.content.parts if cand.content else []):
             inline = getattr(part, "inline_data", None)

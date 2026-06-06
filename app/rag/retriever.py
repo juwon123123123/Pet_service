@@ -1,20 +1,26 @@
-from __future__ import annotations
 """
-검색 + 메타데이터 필터 + 경량 재순위.
+pgvector 기반 검색 + 메타데이터 필터 + 휴리스틱 재순위.
 
 재순위 규칙(휴리스틱, 외부 모델 없이):
   - 종 일치(+0.25)
-  - 펫의 연령(주)이 age_min_weeks ~ age_max_weeks 범위 안 (+0.4)
+  - 펫 연령(주)이 age_min_weeks ~ age_max_weeks 범위 안 (+0.4)
   - 범위 밖이지만 12주 이내로 인접 (+0.15)
   - priority=high (+0.1)
   - 품종이 명시되어 있고 일치 (+0.15)
+
+Postgres pgvector 가 코사인 거리(`<=>`)로 1차 회수 → Python에서 위 가중치 합산 후 재정렬.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.config import settings
-from app.db.vector_store import get_collection
+from app.db.database import KnowledgeChunk, SessionLocal
+from app.db.vector_store import embed_one
 
 
 @dataclass
@@ -25,9 +31,38 @@ class RetrievedChunk:
     score: float
 
 
-def _passes_species(meta: dict, species: str) -> bool:
-    s = str(meta.get("species", "both"))
-    return s in (species, "both")
+def _rerank_score(base: float, chunk: KnowledgeChunk, species: str,
+                  age_weeks: int, breed: Optional[str]) -> float:
+    bonus = 0.0
+
+    if chunk.species == species:
+        bonus += 0.25
+
+    if chunk.age_min_weeks is not None and chunk.age_max_weeks is not None:
+        amin, amax = chunk.age_min_weeks, chunk.age_max_weeks
+        if amin <= age_weeks <= amax:
+            bonus += 0.4
+        else:
+            gap = min(abs(age_weeks - amin), abs(age_weeks - amax))
+            if gap <= 12:
+                bonus += 0.15
+
+    if chunk.priority == "high":
+        bonus += 0.1
+
+    if breed and chunk.breed and breed.lower() == chunk.breed.lower():
+        bonus += 0.15
+
+    return base + bonus
+
+
+def _to_retrieved(chunk: KnowledgeChunk, score: float) -> RetrievedChunk:
+    return RetrievedChunk(
+        doc_id=chunk.doc_id,
+        text=chunk.text,
+        meta=chunk.to_meta(),
+        score=score,
+    )
 
 
 def search(
@@ -35,66 +70,59 @@ def search(
     species: str,
     age_weeks: int,
     breed: Optional[str] = None,
-    top_k: int = None,
+    top_k: int | None = None,
     pool_k: int = 20,
 ) -> list[RetrievedChunk]:
     top_k = top_k or settings.top_k
-    coll = get_collection()
-    # ChromaDB의 where 절은 단순. 종 필터만 1차로 걸고 후처리에서 재순위.
-    res = coll.query(
-        query_texts=[query],
-        n_results=pool_k,
-        where={"species": {"$in": [species, "both"]}},
-    )
+    query_vec = embed_one(query)
 
-    chunks: list[RetrievedChunk] = []
-    docs = res.get("documents", [[]])[0]
-    metas = res.get("metadatas", [[]])[0]
-    ids = res.get("ids", [[]])[0]
-    dists = res.get("distances", [[]])[0]
+    db: Session = SessionLocal()
+    try:
+        # pgvector 코사인 거리: `embedding <=> :vec` (0=동일, 2=정반대)
+        # SQLAlchemy로 ORDER BY 표현. pgvector 패키지가 연산자를 자동 등록.
+        stmt = (
+            select(KnowledgeChunk,
+                   KnowledgeChunk.embedding.cosine_distance(query_vec).label("dist"))
+            .where(KnowledgeChunk.species.in_([species, "both"]))
+            .order_by(KnowledgeChunk.embedding.cosine_distance(query_vec))
+            .limit(pool_k)
+        )
+        results = db.execute(stmt).all()
+    finally:
+        db.close()
 
-    for doc_id, text, meta, dist in zip(ids, docs, metas, dists):
-        if not _passes_species(meta, species):
-            continue
-        base = 1.0 - float(dist)  # cosine distance -> similarity
-        bonus = 0.0
+    scored: list[RetrievedChunk] = []
+    for chunk, dist in results:
+        base = 1.0 - float(dist)  # 코사인 distance → similarity
+        score = _rerank_score(base, chunk, species, age_weeks, breed)
+        scored.append(_to_retrieved(chunk, score))
 
-        if meta.get("species") == species:
-            bonus += 0.25
-
-        amin = meta.get("age_min_weeks")
-        amax = meta.get("age_max_weeks")
-        if amin is not None and amax is not None:
-            if amin <= age_weeks <= amax:
-                bonus += 0.4
-            else:
-                gap = min(abs(age_weeks - amin), abs(age_weeks - amax))
-                if gap <= 12:
-                    bonus += 0.15
-
-        if meta.get("priority") == "high":
-            bonus += 0.1
-
-        if breed and meta.get("breed") and breed.lower() == str(meta["breed"]).lower():
-            bonus += 0.15
-
-        chunks.append(RetrievedChunk(doc_id=doc_id, text=text, meta=meta, score=base + bonus))
-
-    chunks.sort(key=lambda c: c.score, reverse=True)
-    return chunks[:top_k]
+    scored.sort(key=lambda c: c.score, reverse=True)
+    return scored[:top_k]
 
 
 def all_relevant_for_schedule(species: str, age_weeks: int) -> list[RetrievedChunk]:
     """
-    캘린더 변환용. 종 일치하면서 schedule 관련 메타가 있는 문서를 메타필터로 모두 회수.
+    캘린더 변환용. 종 일치 + schedule 메타가 있는 청크 전부 회수.
+    age_weeks는 인터페이스 호환을 위해 받음 (현재 로직에선 미사용).
     """
-    coll = get_collection()
-    res = coll.get(where={"species": {"$in": [species, "both"]}})
-    out: list[RetrievedChunk] = []
-    for doc_id, text, meta in zip(res["ids"], res["documents"], res["metadatas"]):
-        has_oneshot = meta.get("age_min_weeks") is not None and meta.get("age_max_weeks") is not None
-        has_recurring = bool(meta.get("recurring"))
-        if not (has_oneshot or has_recurring):
-            continue
-        out.append(RetrievedChunk(doc_id=doc_id, text=text, meta=meta, score=1.0))
-    return out
+    _ = age_weeks  # 미사용 의도 명시
+    db: Session = SessionLocal()
+    try:
+        # one-shot: age_min/max 둘 다 있어야 함
+        # recurring: 그냥 True
+        rows = (
+            db.query(KnowledgeChunk)
+            .filter(KnowledgeChunk.species.in_([species, "both"]))
+            .filter(
+                (
+                    (KnowledgeChunk.age_min_weeks.isnot(None))
+                    & (KnowledgeChunk.age_max_weeks.isnot(None))
+                )
+                | (KnowledgeChunk.recurring.is_(True))
+            )
+            .all()
+        )
+    finally:
+        db.close()
+    return [_to_retrieved(c, 1.0) for c in rows]

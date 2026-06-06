@@ -9,12 +9,17 @@ class Settings(BaseSettings):
     # nano-banana = Google Gemini 2.5 Flash Image. 이미지 생성/편집 모델.
     gemini_image_model: str = "gemini-2.5-flash-image"
     database_url: str = "sqlite:///./pet_ai.db"
-    chroma_dir: str = "./chroma_store"
     embed_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     knowledge_dir: str = "./app/data/knowledge"
     uploads_dir: str = "./uploads"
     top_k: int = 6
     recommend_k: int = 5
+
+    # ── 파일 저장 백엔드 ─────────────────────────────────────
+    # local  → ./uploads/ 디렉토리에 저장, /uploads 정적 서빙
+    # gcs    → Google Cloud Storage 버킷에 저장, 공개 URL 반환
+    storage_backend: str = "local"
+    gcs_bucket: str = ""        # 예: "pet-times-uploads"
 
 
 settings = Settings()

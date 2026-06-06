@@ -1,10 +1,10 @@
 from __future__ import annotations
 """
-공식 가이드라인 PDF -> ChromaDB.
+공식 가이드라인 PDF -> pgvector(knowledge_chunks).
 
-- 페이지 단위로 텍스트를 추출하고 ~900자 청크(100자 오버랩)로 분할
-- 각 청크는 매니페스트의 메타데이터 + page 번호를 함께 저장
-- doc_type=guideline 플래그로 캘린더 변환기에서 제외됨 (스케줄링은 .md 시드 전용)
+- 페이지 단위 텍스트 추출 → ~900자 청크(100자 오버랩)
+- 각 청크에 매니페스트 메타 + page 번호 저장
+- doc_type=guideline 플래그로 캘린더 변환기에서 제외 (스케줄링은 .md 시드 전용)
 """
 
 from pathlib import Path
@@ -13,8 +13,8 @@ from typing import Iterator
 import yaml
 from pypdf import PdfReader
 
-from app.config import settings
-from app.db.vector_store import get_collection
+from app.db.database import KnowledgeChunk, SessionLocal
+from app.db.vector_store import insert_chunks
 
 CHUNK_SIZE = 900
 CHUNK_OVERLAP = 100
@@ -41,18 +41,20 @@ def ingest_pdf(pdf_path: Path, entry: dict) -> int:
     reader = PdfReader(str(pdf_path))
     base_id = _slug(pdf_path.stem)
 
-    ids, docs, metas = [], [], []
+    rows: list[dict] = []
     for page_idx, page in enumerate(reader.pages, start=1):
         text = page.extract_text() or ""
         for chunk_idx, chunk in enumerate(_chunk_text(text)):
             if len(chunk) < 80:
                 continue
-            ids.append(f"{base_id}_p{page_idx}_c{chunk_idx}")
-            docs.append(chunk)
-            metas.append({
+            chunk_id = f"{base_id}_p{page_idx}_c{chunk_idx}"
+            rows.append({
+                "id": chunk_id,
+                "doc_id": base_id,
+                "text": chunk,
                 "doc_type": "guideline",
                 "source": str(entry.get("source", "")),
-                "year": int(entry.get("year", 0)) if entry.get("year") else 0,
+                "year": int(entry.get("year", 0)) if entry.get("year") else None,
                 "title": str(entry.get("title", pdf_path.stem)),
                 "species": str(entry.get("species", "both")),
                 "category": str(entry.get("category", "general")),
@@ -61,18 +63,25 @@ def ingest_pdf(pdf_path: Path, entry: dict) -> int:
                 "file": pdf_path.name,
             })
 
-    if not ids:
-        return 0
-    coll = get_collection()
-    coll.add(ids=ids, documents=docs, metadatas=metas)
-    return len(ids)
+    return insert_chunks(rows)
 
 
-def ingest_manifest(sources_dir: str | None = None) -> dict:
+def ingest_manifest(sources_dir: str | None = None, reset: bool = True) -> dict:
     sources_dir = Path(sources_dir or "app/data/sources")
     manifest = sources_dir / "manifest.yaml"
     if not manifest.exists():
         return {"loaded": 0, "files": [], "skipped": [], "note": "manifest.yaml 없음 - PDF 적재 생략"}
+
+    if reset:
+        # PDF(guideline) 청크만 정리. 큐레이션(.md)은 보존.
+        db = SessionLocal()
+        try:
+            db.query(KnowledgeChunk).filter(
+                KnowledgeChunk.doc_type == "guideline"
+            ).delete(synchronize_session=False)
+            db.commit()
+        finally:
+            db.close()
 
     spec = yaml.safe_load(manifest.read_text(encoding="utf-8")) or {}
     entries = spec.get("sources", [])

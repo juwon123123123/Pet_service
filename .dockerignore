@@ -1,0 +1,54 @@
+.git
+.gitignore
+.gitattributes
+.github
+
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+
+# 로컬 데이터 / 캐시
+*.db
+*.sqlite
+*.sqlite3
+chroma_store
+uploads
+.cache
+.huggingface
+
+# 시크릿
+.env
+.env.local
+.env.*.local
+
+# 프론트엔드 (별도 빌드)
+flutter_application
+
+# 문서
+docs
+README.md
+PRESENTATION*.md
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# 테스트용 자료
+dog.png
+*.test.png
+*.test.jpg
+
+# 도구
+cloud-sql-proxy
+Dockerfile
+.dockerignore
+
+# 로그
+*.log
+nohup.out

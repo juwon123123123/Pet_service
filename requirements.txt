@@ -3,7 +3,9 @@ uvicorn[standard]==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.5.2
 SQLAlchemy==2.0.35
-chromadb==0.5.15
+psycopg2-binary==2.9.9  # Postgres 드라이버 (Cloud SQL)
+pgvector==0.3.6        # pgvector SQLAlchemy 타입
+google-cloud-storage==2.19.0  # GCS 버킷 IO
 sentence-transformers==3.1.1
 google-genai>=1.47.0
 python-dotenv==1.0.1

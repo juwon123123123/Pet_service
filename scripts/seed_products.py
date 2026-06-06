@@ -16,9 +16,11 @@
   sqlite3 pet_ai.db "DELETE FROM products;"
   .venv/bin/python -m scripts.seed_products
 """
+import mimetypes
 from pathlib import Path
 
 from app.db.database import Product, SessionLocal, init_db
+from app.storage import storage
 
 UPLOAD_DIR = Path("uploads/products")
 
@@ -95,16 +97,24 @@ def main():
             nonlocal added
             for offset, (name, price, tags, smin, smax) in enumerate(items):
                 fname = f"cloth{idx_start + offset}.jpg"
-                img_path = UPLOAD_DIR / fname
-                if not img_path.exists():
-                    skipped.append(str(img_path))
+                local_path = UPLOAD_DIR / fname
+                key = f"uploads/products/{fname}"
+                if not local_path.exists():
+                    skipped.append(str(local_path))
                     continue
+                # 저장소 백엔드(local/gcs)에 따라 자동 분기.
+                #   - local: 이미 같은 경로에 있으므로 storage.save 가 no-op이지만
+                #            일관성을 위해 byte 재기록.
+                #   - gcs:   해당 경로로 버킷에 업로드.
+                if not storage.exists(key):
+                    mime, _ = mimetypes.guess_type(str(local_path))
+                    storage.save(key, local_path.read_bytes(), mime or "image/jpeg")
                 p = Product(
                     name=name,
                     species=species,
                     category="옷",
                     price=int(price),
-                    image_path=str(img_path).replace("\\", "/"),
+                    image_path=key,
                     tags=",".join(tags) or None,
                     size_min_kg=smin,
                     size_max_kg=smax,

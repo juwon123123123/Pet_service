@@ -1,15 +1,14 @@
 import secrets
 from datetime import date
-from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.db.database import Pet, get_db
 from app.models.schemas import PetCreate, PetOut, PetUpdate
 from app.scheduler.converter import compute_age
+from app.storage import storage
 
 router = APIRouter(prefix="/pets", tags=["pets"])
 
@@ -23,7 +22,7 @@ def _to_out(p: Pet) -> PetOut:
         id=p.id, name=p.name, species=p.species, breed=p.breed,
         birth_date=p.birth_date, sex=p.sex, neutered=p.neutered,
         weight_kg=p.weight_kg, age_weeks=weeks, age_months=months,
-        photo_url=(f"/{p.photo_path}" if p.photo_path else None),
+        photo_url=(storage.url(p.photo_path) if p.photo_path else None),
     )
 
 
@@ -64,12 +63,8 @@ def delete_pet(pet_id: int, db: Session = Depends(get_db)):
     p = db.get(Pet, pet_id)
     if not p:
         raise HTTPException(404, "pet not found")
-    # 업로드한 사진도 삭제
     if p.photo_path:
-        try:
-            Path(p.photo_path).unlink(missing_ok=True)
-        except Exception:
-            pass
+        storage.delete(p.photo_path)
     db.delete(p); db.commit()
     return {"ok": True}
 
@@ -86,27 +81,20 @@ def upload_pet_photo(
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(400, f"unsupported content_type: {file.content_type}")
 
-    ext = EXT_BY_TYPE[file.content_type]
-    fname = f"pet_{pet_id}_{secrets.token_hex(6)}.{ext}"
-    dest_dir = Path(settings.uploads_dir) / "pet_photos"
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / fname
-
     data = file.file.read()
     if len(data) == 0:
         raise HTTPException(400, "empty file")
     if len(data) > 8 * 1024 * 1024:
         raise HTTPException(400, "file too large (max 8MB)")
-    dest.write_bytes(data)
 
-    # 이전 사진은 지움
+    ext = EXT_BY_TYPE[file.content_type]
+    key = f"uploads/pet_photos/pet_{pet_id}_{secrets.token_hex(6)}.{ext}"
+    storage.save(key, data, file.content_type)
+
+    # 이전 사진 정리
     if p.photo_path:
-        try:
-            Path(p.photo_path).unlink(missing_ok=True)
-        except Exception:
-            pass
+        storage.delete(p.photo_path)
 
-    # uploads/pet_photos/<file> 형태로 저장
-    p.photo_path = str(dest).replace("\\", "/").lstrip("./")
+    p.photo_path = key
     db.commit(); db.refresh(p)
     return _to_out(p)

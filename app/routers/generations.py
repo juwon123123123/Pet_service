@@ -2,18 +2,18 @@
 nano-banana 합성 이미지 생성.
 
 흐름:
-  1) 클라이언트가 POST /generations 호출
+  1) 클라이언트가 POST /generations
      - use_registered=True 이면 등록된 펫 사진 사용
      - 직접 사진을 쓸 거면 POST /generations/upload_temp 로 임시 업로드 후 temp_photo_path 전달
      - product_ids 비우면 추천기로 5개 선택, 채우면 그 상품만
-  2) 백그라운드로 nano-banana 호출 → 결과를 ./uploads/generated/ 에 저장
-  3) 클라이언트는 GET /generations?pet_id= 로 폴링하면서 status==done 결과만 리스트에 표시
+  2) 백그라운드로 storage 에서 사진 읽어 nano-banana 호출 → 결과를 storage 에 저장
+  3) 클라이언트는 GET /generations?pet_id= 로 폴링하면서 status==done 결과만 표시
 """
 from __future__ import annotations
 
+import mimetypes
 import secrets
 from datetime import datetime
-from pathlib import Path
 from typing import List
 
 from fastapi import (
@@ -27,6 +27,7 @@ from app.models.schemas import GenerationOut, GenerationRequest
 from app.routers.products import to_out as product_to_out
 from app.shopping.nano_banana import generate_composite
 from app.shopping.recommender import recommend
+from app.storage import storage
 
 router = APIRouter(prefix="/generations", tags=["generations"])
 
@@ -39,8 +40,8 @@ def _to_out(g: Generation) -> GenerationOut:
         id=g.id,
         pet_id=g.pet_id,
         product_id=g.product_id,
-        source_photo_url=f"/{g.source_photo_path}",
-        result_url=(f"/{g.result_path}" if g.result_path else None),
+        source_photo_url=storage.url(g.source_photo_path),
+        result_url=(storage.url(g.result_path) if g.result_path else None),
         status=g.status,
         error=g.error,
         created_at=g.created_at,
@@ -48,24 +49,26 @@ def _to_out(g: Generation) -> GenerationOut:
     )
 
 
+def _guess_mime(key: str) -> str:
+    m, _ = mimetypes.guess_type(key)
+    return m or "image/jpeg"
+
+
 @router.post("/upload_temp")
 def upload_temp_photo(file: UploadFile = File(...)):
     """추천 이미지 생성 시 등록 사진 대신 즉석에서 올리는 사진."""
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(400, f"unsupported content_type: {file.content_type}")
-    ext = EXT_BY_TYPE[file.content_type]
-    fname = f"temp_{secrets.token_hex(8)}.{ext}"
-    dest_dir = Path(settings.uploads_dir) / "pet_photos"
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / fname
     data = file.file.read()
     if len(data) == 0:
         raise HTTPException(400, "empty file")
     if len(data) > 8 * 1024 * 1024:
         raise HTTPException(400, "file too large (max 8MB)")
-    dest.write_bytes(data)
-    rel = str(dest).replace("\\", "/").lstrip("./")
-    return {"photo_path": rel, "photo_url": f"/{rel}"}
+
+    ext = EXT_BY_TYPE[file.content_type]
+    key = f"uploads/pet_photos/temp_{secrets.token_hex(8)}.{ext}"
+    storage.save(key, data, file.content_type)
+    return {"photo_path": key, "photo_url": storage.url(key)}
 
 
 def _run_job(gen_id: int):
@@ -81,20 +84,23 @@ def _run_job(gen_id: int):
             if pet is None or product is None:
                 raise RuntimeError("pet/product 사라짐")
 
+            # 두 사진을 storage 에서 읽음 (local: 파일, gcs: blob)
+            pet_bytes = storage.read_bytes(g.source_photo_path)
+            product_bytes = storage.read_bytes(product.image_path)
+
             image_bytes = generate_composite(
-                pet_photo_path=Path(g.source_photo_path),
-                product_photo_path=Path(product.image_path),
+                pet_photo_bytes=pet_bytes,
+                pet_photo_mime=_guess_mime(g.source_photo_path),
+                product_photo_bytes=product_bytes,
+                product_photo_mime=_guess_mime(product.image_path),
                 pet_name=pet.name,
                 species=pet.species,
                 product_name=product.name,
                 category=product.category,
             )
-            out_dir = Path(settings.uploads_dir) / "generated"
-            out_dir.mkdir(parents=True, exist_ok=True)
-            fname = f"gen_{g.id}_{secrets.token_hex(4)}.png"
-            dest = out_dir / fname
-            dest.write_bytes(image_bytes)
-            g.result_path = str(dest).replace("\\", "/").lstrip("./")
+            key = f"uploads/generated/gen_{g.id}_{secrets.token_hex(4)}.png"
+            storage.save(key, image_bytes, "image/png")
+            g.result_path = key
             g.status = "done"
             g.completed_at = datetime.utcnow()
         except Exception as e:
@@ -116,7 +122,6 @@ def create_generations(
     if pet is None:
         raise HTTPException(404, "pet not found")
 
-    # 소스 사진 결정
     if req.use_registered:
         if not pet.photo_path:
             raise HTTPException(400, "이 펫에 등록된 사진이 없어요. 먼저 사진을 업로드해주세요.")
@@ -124,11 +129,10 @@ def create_generations(
     else:
         if not req.temp_photo_path:
             raise HTTPException(400, "temp_photo_path 가 필요해요. /generations/upload_temp 먼저 호출하세요.")
-        if not Path(req.temp_photo_path).exists():
+        if not storage.exists(req.temp_photo_path):
             raise HTTPException(400, f"임시 사진을 찾을 수 없음: {req.temp_photo_path}")
         source = req.temp_photo_path
 
-    # 상품 후보 결정
     if req.product_ids:
         products = (
             db.query(Product)
@@ -136,7 +140,6 @@ def create_generations(
             .all()
         )
     else:
-        # 종 필터 + both 포함해서 추천기에 넘김
         candidates = (
             db.query(Product)
             .filter(
@@ -165,8 +168,6 @@ def create_generations(
     db.commit()
     for g in rows: db.refresh(g)
 
-    # 백그라운드 실행 — FastAPI BackgroundTasks 는 요청 종료 후 순차 실행.
-    # 5개를 별도 함수로 스케줄.
     for g in rows:
         background_tasks.add_task(_run_job, g.id)
 
@@ -203,15 +204,11 @@ def delete_generation(gen_id: int, db: Session = Depends(get_db)):
     if not g:
         raise HTTPException(404, "generation not found")
     if g.result_path:
-        try:
-            Path(g.result_path).unlink(missing_ok=True)
-        except Exception:
-            pass
+        storage.delete(g.result_path)
     db.delete(g); db.commit()
     return {"ok": True}
 
 
-# ── 추천만 조회 (생성 없이 5개 상품 제안) ───────────────────────────────
 @router.get("/recommend/{pet_id}")
 def recommend_only(pet_id: int, db: Session = Depends(get_db)):
     pet = db.get(Pet, pet_id)

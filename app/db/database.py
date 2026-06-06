@@ -7,6 +7,14 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 from app.config import settings
 
+# pgvector는 Postgres 백엔드에서만 의미가 있으므로 지연 import.
+def _vector_column(dim: int):
+    """pgvector Vector 컬럼. SQLite 등 다른 백엔드에서는 fallback으로 Text 저장."""
+    if settings.database_url.startswith("postgresql"):
+        from pgvector.sqlalchemy import Vector
+        return Vector(dim)
+    return Text  # SQLite 폴백 — 사실상 RAG는 Postgres 전용이지만 import만 깨지지 않게.
+
 engine = create_engine(
     settings.database_url,
     connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
@@ -96,10 +104,75 @@ class Generation(Base):
     product = relationship("Product")
 
 
-def _migrate_pet_photo_path():
-    """SQLite ADD COLUMN: 기존 pets 테이블에 photo_path 가 없으면 추가."""
-    if not settings.database_url.startswith("sqlite"):
+class KnowledgeChunk(Base):
+    """RAG 검색용 청크 (큐레이션 .md + 공식 가이드라인 PDF 페이지).
+
+    embedding 컬럼은 pgvector(384) — sentence-transformers MiniLM 출력 차원.
+    SQLite에선 의미 없음 (실제 RAG는 Postgres에서만 동작).
+    """
+    __tablename__ = "knowledge_chunks"
+
+    id = Column(String, primary_key=True)             # chunk ID (doc_id + 페이지/청크 인덱스)
+    doc_id = Column(String, nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    doc_type = Column(String, nullable=False, index=True)  # curated | guideline
+
+    species = Column(String, nullable=False, index=True)   # dog | cat | both
+    category = Column(String, nullable=True)
+    title = Column(String, nullable=True)
+    source = Column(String, nullable=True)
+    year = Column(Integer, nullable=True)
+    page = Column(Integer, nullable=True)
+    priority = Column(String, nullable=True)               # low | normal | high
+    breed = Column(String, nullable=True)
+    file = Column(String, nullable=True)
+
+    # 캘린더 스케줄링 메타 (curated만 채움)
+    age_min_weeks = Column(Integer, nullable=True)
+    age_max_weeks = Column(Integer, nullable=True)
+    recurring = Column(Boolean, nullable=True)
+    interval_days = Column(Integer, nullable=True)
+    start_age_weeks = Column(Integer, nullable=True)
+    end_age_weeks = Column(Integer, nullable=True)
+
+    embedding = Column(_vector_column(384), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def to_meta(self) -> dict:
+        """기존 ChromaDB metadata 형식과 호환되는 dict 반환."""
+        out = {
+            "doc_type": self.doc_type,
+            "species": self.species,
+            "category": self.category,
+            "title": self.title,
+            "source": self.source,
+            "year": self.year,
+            "page": self.page,
+            "priority": self.priority,
+            "breed": self.breed,
+            "file": self.file,
+            "age_min_weeks": self.age_min_weeks,
+            "age_max_weeks": self.age_max_weeks,
+            "recurring": self.recurring,
+            "interval_days": self.interval_days,
+            "start_age_weeks": self.start_age_weeks,
+            "end_age_weeks": self.end_age_weeks,
+        }
+        return {k: v for k, v in out.items() if v is not None}
+
+
+def _ensure_pgvector_extension():
+    """Postgres라면 CREATE EXTENSION vector. SQLite면 no-op."""
+    if not settings.database_url.startswith("postgresql"):
         return
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+
+
+def _migrate_pet_photo_path():
+    """레거시 DB(이전 버전에서 만든 pets 테이블)에 photo_path 가 없으면 추가.
+    SQLite와 Postgres 모두 ALTER TABLE 같은 문법으로 동작."""
     from sqlalchemy import inspect, text
     insp = inspect(engine)
     if "pets" not in insp.get_table_names():
@@ -111,6 +184,8 @@ def _migrate_pet_photo_path():
 
 
 def init_db():
+    # pgvector extension은 테이블 생성 전에 활성화돼야 Vector(384) 컬럼 만들 수 있음.
+    _ensure_pgvector_extension()
     Base.metadata.create_all(bind=engine)
     _migrate_pet_photo_path()
 

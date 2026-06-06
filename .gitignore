@@ -2,6 +2,12 @@
 .env
 .env.local
 .env.*.local
+.env.bak
+*.bak
+
+# ── 로컬 도구 (대용량 바이너리) ──────────────────────────────
+cloud-sql-proxy
+cloud-run-env.yaml
 
 # ── Python ────────────────────────────────────────────────
 __pycache__/

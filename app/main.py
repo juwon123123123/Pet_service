@@ -14,9 +14,10 @@ app = FastAPI(title="Pet AI", description="초보 반려인을 위한 RAG 기반
 @app.on_event("startup")
 def _startup():
     init_db()
-    # 업로드 디렉터리 보장
-    for sub in ("products", "pet_photos", "generated"):
-        (Path(settings.uploads_dir) / sub).mkdir(parents=True, exist_ok=True)
+    # local 백엔드에서는 디렉터리 미리 만들어둠 (GCS면 불필요).
+    if settings.storage_backend.lower() == "local":
+        for sub in ("products", "pet_photos", "generated"):
+            (Path(settings.uploads_dir) / sub).mkdir(parents=True, exist_ok=True)
 
 
 @app.get("/health")
@@ -30,10 +31,12 @@ app.include_router(calendar.router)
 app.include_router(products.router)
 app.include_router(generations.router)
 
-# 정적 파일 마운트
-UPLOADS_DIR = Path(settings.uploads_dir).resolve()
-UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+# 정적 파일 마운트 — local 백엔드일 때만.
+# GCS 백엔드는 파일을 버킷이 직접 서빙하므로 /uploads 경로가 필요없음.
+if settings.storage_backend.lower() == "local":
+    UPLOADS_DIR = Path(settings.uploads_dir).resolve()
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 WEB_DIR = Path(__file__).parent / "web"
 app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")

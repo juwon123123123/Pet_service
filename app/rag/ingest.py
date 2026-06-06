@@ -1,5 +1,5 @@
 """
-지식 문서를 ChromaDB에 적재.
+지식 문서를 pgvector(knowledge_chunks 테이블)에 적재.
 
 문서 포맷: YAML 프론트매터를 가진 마크다운.
 필수 메타데이터:
@@ -19,9 +19,18 @@ from typing import Any
 import yaml
 
 from app.config import settings
-from app.db.vector_store import get_collection, reset_collection
+from app.db.database import KnowledgeChunk, SessionLocal
+from app.db.vector_store import insert_chunks
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)
+
+# KnowledgeChunk 컬럼 화이트리스트 — 알려진 필드만 dict에 담아 ORM에 넘김.
+_ALLOWED_KEYS = {
+    "doc_id", "text", "doc_type", "species", "category", "title", "source",
+    "year", "page", "priority", "breed", "file",
+    "age_min_weeks", "age_max_weeks", "recurring", "interval_days",
+    "start_age_weeks", "end_age_weeks",
+}
 
 
 def parse_doc(path: Path) -> tuple[dict[str, Any], str]:
@@ -34,24 +43,40 @@ def parse_doc(path: Path) -> tuple[dict[str, Any], str]:
     return meta, body
 
 
-def _normalize_meta(meta: dict[str, Any]) -> dict[str, Any]:
-    # ChromaDB는 scalar(str/int/float/bool)만 허용
-    out: dict[str, Any] = {}
+def _to_row(meta: dict[str, Any], body: str) -> dict[str, Any]:
+    """frontmatter dict → KnowledgeChunk 컬럼 dict."""
+    doc_id = str(meta["id"])
+    row: dict[str, Any] = {
+        "id": doc_id,
+        "doc_id": doc_id,
+        "text": body,
+        "doc_type": meta.get("doc_type", "curated"),
+    }
     for k, v in meta.items():
-        if v is None:
+        if k == "id" or v is None:
             continue
-        if isinstance(v, (list, dict)):
-            out[k] = ",".join(map(str, v)) if isinstance(v, list) else str(v)
-        else:
-            out[k] = v
-    return out
+        if k in _ALLOWED_KEYS:
+            row[k] = v
+    # 필수
+    row.setdefault("species", "both")
+    return row
 
 
 def ingest_dir(knowledge_dir: str | None = None, reset: bool = True) -> int:
     knowledge_dir = knowledge_dir or settings.knowledge_dir
-    coll = reset_collection() if reset else get_collection()
 
-    ids, docs, metas = [], [], []
+    if reset:
+        # 이 함수에서는 큐레이션 청크만 정리. PDF(guideline)은 보존.
+        db = SessionLocal()
+        try:
+            db.query(KnowledgeChunk).filter(
+                KnowledgeChunk.doc_type == "curated"
+            ).delete(synchronize_session=False)
+            db.commit()
+        finally:
+            db.close()
+
+    rows: list[dict[str, Any]] = []
     for root, _, files in os.walk(knowledge_dir):
         for fn in files:
             if not fn.endswith(".md"):
@@ -59,12 +84,6 @@ def ingest_dir(knowledge_dir: str | None = None, reset: bool = True) -> int:
             meta, body = parse_doc(Path(root) / fn)
             if "id" not in meta:
                 raise ValueError(f"{fn}: missing id")
-            meta.setdefault("doc_type", "curated")  # 캘린더 변환 대상
-            ids.append(str(meta["id"]))
-            docs.append(body)
-            metas.append(_normalize_meta(meta))
+            rows.append(_to_row(meta, body))
 
-    if not ids:
-        return 0
-    coll.add(ids=ids, documents=docs, metadatas=metas)
-    return len(ids)
+    return insert_chunks(rows)
