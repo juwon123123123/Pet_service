@@ -81,9 +81,9 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
   Future<void> _start({required bool useRegistered}) async {
     final pet = petStore.pet;
     if (pet == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('먼저 펫 정보 탭에서 등록해주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('먼저 펫 정보 탭에서 등록해주세요.')));
       return;
     }
     String? tempPath;
@@ -103,9 +103,9 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
       } catch (e) {
         if (!mounted) return;
         setState(() => _starting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('사진 업로드 실패: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('사진 업로드 실패: $e')));
         return;
       }
     } else {
@@ -126,9 +126,9 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('생성 실패: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('생성 실패: $e')));
     } finally {
       if (mounted) setState(() => _starting = false);
     }
@@ -146,14 +146,18 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined,
-                  color: AppColors.sage),
+              leading: const Icon(
+                Icons.photo_camera_outlined,
+                color: AppColors.sage,
+              ),
               title: const Text('카메라로 찍기'),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
-                  color: AppColors.sage),
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: AppColors.sage,
+              ),
               title: const Text('앨범에서 고르기'),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
@@ -172,23 +176,39 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
       onRefresh: _load,
       color: AppColors.sage,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         children: [
-          AppCard(
-            color: AppColors.mint,
+          GlassPanel(
+            color: AppColors.charcoal,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SectionTitle('AI 옷 코디 추천'),
-                const SizedBox(height: 6),
+                const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.white,
+                  size: 28,
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'AI 가상 피팅',
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   pet == null
                       ? '먼저 펫을 등록해주세요.'
                       : '${pet.name}에게 어울릴 옷 5개를 추천하고, 입은 모습을 합성해드려요.',
-                  style: const TextStyle(
-                      fontSize: 14, color: AppColors.charcoal, height: 1.5),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.white.withValues(alpha: 0.72),
+                    height: 1.5,
+                  ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 18),
                 Row(
                   children: [
                     Expanded(
@@ -199,11 +219,13 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
                         icon: const Icon(Icons.pets_rounded, size: 18),
                         label: const Text('등록 사진으로'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.sage,
-                          side: const BorderSide(color: AppColors.sage),
+                          foregroundColor: AppColors.white,
+                          side: BorderSide(
+                            color: AppColors.white.withValues(alpha: 0.28),
+                          ),
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                       ),
@@ -217,11 +239,11 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
                         icon: const Icon(Icons.add_a_photo_outlined, size: 18),
                         label: const Text('새 사진 업로드'),
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.sage,
-                          foregroundColor: AppColors.white,
+                          backgroundColor: AppColors.white,
+                          foregroundColor: AppColors.charcoal,
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                       ),
@@ -237,8 +259,10 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
           ),
           const SizedBox(height: 16),
           if (_err != null)
-            Text(_err!,
-                style: const TextStyle(color: AppColors.coral, fontSize: 13)),
+            Text(
+              _err!,
+              style: const TextStyle(color: AppColors.coral, fontSize: 13),
+            ),
           if (_all.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
@@ -256,8 +280,8 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
                 childAspectRatio: 0.82,
               ),
               itemCount: _all.length,
@@ -269,9 +293,9 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
                     await _load();
                   } catch (e) {
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('삭제 실패: $e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
                   }
                 },
               ),
@@ -307,11 +331,15 @@ class _GenerationCard extends StatelessWidget {
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.sage),
+                  strokeWidth: 2,
+                  color: AppColors.sage,
+                ),
               ),
               SizedBox(height: 8),
-              Text('생성 중…',
-                  style: TextStyle(color: AppColors.sage, fontSize: 12)),
+              Text(
+                '생성 중…',
+                style: TextStyle(color: AppColors.sage, fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -323,22 +351,26 @@ class _GenerationCard extends StatelessWidget {
         child: const Center(
           child: Padding(
             padding: EdgeInsets.all(12),
-            child: Text('실패\n다시 시도해보세요',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.coral, fontSize: 12)),
+            child: Text(
+              '실패\n다시 시도해보세요',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.coral, fontSize: 12),
+            ),
           ),
         ),
       );
     }
     return InkWell(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(8),
       // 탭: 합성된 옷의 상품 상세 페이지로 이동.
       // 롱프레스: 생성 이미지 전체보기.
       onTap: gen.isDone
           ? () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ProductDetailScreen.fromId(gen.productId),
-              ));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailScreen.fromId(gen.productId),
+                ),
+              );
             }
           : null,
       onLongPress: gen.isDone
@@ -359,7 +391,7 @@ class _GenerationCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.line),
           boxShadow: softShadow,
         ),
@@ -378,8 +410,7 @@ class _GenerationCard extends StatelessWidget {
                 ),
                 iconSize: 16,
                 onPressed: onDelete,
-                icon: const Icon(Icons.close_rounded,
-                    color: AppColors.gray),
+                icon: const Icon(Icons.close_rounded, color: AppColors.gray),
               ),
             ),
             Positioned(
@@ -388,7 +419,9 @@ class _GenerationCard extends StatelessWidget {
               bottom: 0,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,

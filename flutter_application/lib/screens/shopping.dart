@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../widgets/common.dart';
 import 'product_list.dart';
 import 'recommend_generate.dart';
 
@@ -38,25 +39,19 @@ class _ShoppingScreenState extends State<ShoppingScreen>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 10),
-              child: Row(
-                children: [
-                  Text(
-                    '쇼핑',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontSize: 26),
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+              child: PageHeader(
+                eyebrow: 'SHOP',
+                title: '우리 아이에게\n어울리는 아이템',
+                subtitle: '상품을 둘러보고 AI 가상 피팅으로 착용 모습을 미리 확인하세요.',
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
                 decoration: BoxDecoration(
                   color: AppColors.white,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.line),
                 ),
                 child: TabBar(
@@ -64,17 +59,19 @@ class _ShoppingScreenState extends State<ShoppingScreen>
                   dividerColor: Colors.transparent,
                   indicator: BoxDecoration(
                     color: AppColors.mint,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   indicatorPadding: const EdgeInsets.all(4),
                   labelColor: AppColors.sage,
                   unselectedLabelColor: AppColors.gray,
                   labelStyle: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w800),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
                   tabs: const [
-                    Tab(text: '🐱 고양이'),
-                    Tab(text: '✨ 추천 생성'),
-                    Tab(text: '🐶 강아지'),
+                    Tab(text: '고양이'),
+                    Tab(text: 'AI 피팅'),
+                    Tab(text: '강아지'),
                   ],
                 ),
               ),

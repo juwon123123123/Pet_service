@@ -73,9 +73,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('재생성 실패: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('재생성 실패: $e')));
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -95,11 +95,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _openEdit(Event ev) async {
     final pet = petStore.pet;
     if (pet == null) return;
-    final updated = await showEventEditor(
-      context,
-      petId: pet.id,
-      existing: ev,
-    );
+    final updated = await showEventEditor(context, petId: pet.id, existing: ev);
     if (updated != null) await _load();
   }
 
@@ -109,9 +105,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 실패: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
     }
   }
 
@@ -133,191 +129,246 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.ivory,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: petStore.pet == null ? null : _openCreate,
         backgroundColor: AppColors.sage,
         foregroundColor: AppColors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('일정 추가'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: const Icon(Icons.add_rounded),
       ),
       body: ScreenShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '케어 캘린더',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontSize: 26),
-                ),
-              ),
-              IconButton(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PageHeader(
+              eyebrow: 'CALENDAR',
+              title: '케어 일정을\n놓치지 않게',
+              subtitle: '접종, 검진, 생활관리 일정을 월별로 확인하고 직접 추가할 수 있어요.',
+              action: IconButton(
                 onPressed: loading ? null : _rebuild,
                 tooltip: '캘린더 재생성',
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.white,
+                  foregroundColor: AppColors.charcoal,
+                  side: const BorderSide(color: AppColors.line),
+                ),
                 icon: const Icon(Icons.refresh_rounded),
               ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton.outlined(
-                onPressed: () {
-                  setState(() => visibleMonth = DateTime(
-                      visibleMonth.year, visibleMonth.month - 1));
-                  _load();
-                },
-                icon: const Icon(Icons.chevron_left_rounded),
-              ),
-              Text(
-                '${visibleMonth.year}년 ${visibleMonth.month}월',
-                style: const TextStyle(
-                    fontSize: 19, fontWeight: FontWeight.w800),
-              ),
-              IconButton.outlined(
-                onPressed: () {
-                  setState(() => visibleMonth = DateTime(
-                      visibleMonth.year, visibleMonth.month + 1));
-                  _load();
-                },
-                icon: const Icon(Icons.chevron_right_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          AppCard(
-            child: Column(
-              children: [
-                const Row(
-                  children: [
-                    WeekdayLabel('일'),
-                    WeekdayLabel('월'),
-                    WeekdayLabel('화'),
-                    WeekdayLabel('수'),
-                    WeekdayLabel('목'),
-                    WeekdayLabel('금'),
-                    WeekdayLabel('토'),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: totalCells,
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 7,
-                    mainAxisSpacing: 7,
-                    crossAxisSpacing: 4,
+            ),
+            const SizedBox(height: 18),
+            GlassPanel(
+              child: Row(
+                children: [
+                  _MonthButton(
+                    icon: Icons.chevron_left_rounded,
+                    onPressed: () {
+                      setState(
+                        () => visibleMonth = DateTime(
+                          visibleMonth.year,
+                          visibleMonth.month - 1,
+                        ),
+                      );
+                      _load();
+                    },
                   ),
-                  itemBuilder: (context, index) {
-                    final day = gridStart.add(Duration(days: index));
-                    final inMonth = day.month == visibleMonth.month;
-                    final isSelected = _isSameDay(day, selected);
-                    final dayEvents = _eventsOf(day);
-                    return GestureDetector(
-                      onTap: inMonth
-                          ? () => setState(() => selectedDay = day)
-                          : null,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.coral : null,
-                          shape: BoxShape.circle,
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(
+                          '${visibleMonth.year}',
+                          style: const TextStyle(
+                            color: AppColors.gray,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '${day.day}',
-                              style: TextStyle(
-                                color: !inMonth
-                                    ? AppColors.line
-                                    : isSelected
-                                        ? AppColors.white
-                                        : AppColors.charcoal,
-                                fontWeight: isSelected
-                                    ? FontWeight.w800
-                                    : FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            SizedBox(
-                              height: 5,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: dayEvents.take(3).map((item) {
-                                  return Container(
-                                    width: 5,
-                                    height: 5,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 1.2),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? AppColors.white
-                                          : AppColors.sage,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 2),
+                        Text(
+                          '${visibleMonth.month}월',
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      ],
+                    ),
+                  ),
+                  _MonthButton(
+                    icon: Icons.chevron_right_rounded,
+                    onPressed: () {
+                      setState(
+                        () => visibleMonth = DateTime(
+                          visibleMonth.year,
+                          visibleMonth.month + 1,
+                        ),
+                      );
+                      _load();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            AppCard(
+              elevated: false,
+              padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+              child: Column(
+                children: [
+                  const Row(
+                    children: [
+                      WeekdayLabel('일'),
+                      WeekdayLabel('월'),
+                      WeekdayLabel('화'),
+                      WeekdayLabel('수'),
+                      WeekdayLabel('목'),
+                      WeekdayLabel('금'),
+                      WeekdayLabel('토'),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: totalCells,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          mainAxisSpacing: 7,
+                          crossAxisSpacing: 4,
+                        ),
+                    itemBuilder: (context, index) {
+                      final day = gridStart.add(Duration(days: index));
+                      final inMonth = day.month == visibleMonth.month;
+                      final isSelected = _isSameDay(day, selected);
+                      final dayEvents = _eventsOf(day);
+                      return GestureDetector(
+                        onTap: inMonth
+                            ? () => setState(() => selectedDay = day)
+                            : null,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.sage : null,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                '${day.day}',
+                                style: TextStyle(
+                                  color: !inMonth
+                                      ? AppColors.line
+                                      : isSelected
+                                      ? AppColors.white
+                                      : AppColors.charcoal,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              SizedBox(
+                                height: 5,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: dayEvents.take(3).map((item) {
+                                    return Container(
+                                      width: 5,
+                                      height: 5,
+                                      margin: const EdgeInsets.symmetric(
+                                        horizontal: 1.2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? AppColors.white
+                                            : AppColors.sage,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Text(
+                  '${selected.month}월 ${selected.day}일',
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
+                const SizedBox(width: 8),
+                StatusChip(label: '${selectedEvents.length}개 일정'),
               ],
             ),
-          ),
-          const SizedBox(height: 22),
-          Text(
-            '${selected.month}월 ${selected.day}일',
-            style:
-                const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          if (err != null)
-            Text(err!, style: const TextStyle(color: AppColors.coral)),
-          if (selectedEvents.isEmpty && err == null)
-            const AppCard(
-              child: Text(
-                '등록된 일정이 없어요.',
-                style: TextStyle(color: AppColors.gray, height: 1.4),
-              ),
-            )
-          else
-            ...selectedEvents.map(
-              (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ScheduleCard(
-                  event: e,
-                  onToggleDone: (v) async {
-                    try {
-                      await api.updateEvent(e.id, done: v);
-                      await _load();
-                    } catch (err) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('업데이트 실패: $err')),
-                      );
-                    }
-                  },
-                  onEdit: () => _openEdit(e),
-                  onDelete: () => _deleteEvent(e),
+            const SizedBox(height: 12),
+            if (err != null)
+              Text(err!, style: const TextStyle(color: AppColors.coral)),
+            if (selectedEvents.isEmpty && err == null)
+              const AppCard(
+                elevated: false,
+                child: Text(
+                  '등록된 일정이 없어요. 오른쪽 아래 + 버튼으로 직접 추가할 수 있습니다.',
+                  style: TextStyle(color: AppColors.gray, height: 1.4),
+                ),
+              )
+            else
+              ...selectedEvents.map(
+                (e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: ScheduleCard(
+                    event: e,
+                    onToggleDone: (v) async {
+                      try {
+                        await api.updateEvent(e.id, done: v);
+                        await _load();
+                      } catch (err) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('업데이트 실패: $err')),
+                        );
+                      }
+                    },
+                    onEdit: () => _openEdit(e),
+                    onDelete: () => _deleteEvent(e),
+                  ),
                 ),
               ),
-            ),
-          const SizedBox(height: 80),
-        ],
+            const SizedBox(height: 80),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _MonthButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _MonthButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: AppColors.ivory,
+        foregroundColor: AppColors.charcoal,
+        side: const BorderSide(color: AppColors.line),
       ),
+      icon: Icon(icon),
     );
   }
 }
@@ -342,4 +393,3 @@ class WeekdayLabel extends StatelessWidget {
     );
   }
 }
-

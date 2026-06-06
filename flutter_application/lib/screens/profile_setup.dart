@@ -42,7 +42,18 @@ class _PetProfileSetupScreenState extends State<PetProfileSetupScreen> {
   String? progressMsg;
 
   @override
+  void initState() {
+    super.initState();
+    nameController.addListener(_refreshPreview);
+  }
+
+  void _refreshPreview() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    nameController.removeListener(_refreshPreview);
     guardianController.dispose();
     nameController.dispose();
     breedController.dispose();
@@ -75,14 +86,18 @@ class _PetProfileSetupScreenState extends State<PetProfileSetupScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined,
-                  color: AppColors.sage),
+              leading: const Icon(
+                Icons.photo_camera_outlined,
+                color: AppColors.sage,
+              ),
               title: const Text('카메라로 찍기'),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
-                  color: AppColors.sage),
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: AppColors.sage,
+              ),
               title: const Text('앨범에서 고르기'),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
@@ -203,186 +218,174 @@ class _PetProfileSetupScreenState extends State<PetProfileSetupScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '우리 아이 정보를 알려주세요',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontSize: 25),
+                    const PageHeader(
+                      eyebrow: 'SETUP',
+                      title: '프로필을 만들고\n케어 루틴을 시작해요',
+                      subtitle: '몇 가지 정보만 입력하면 맞춤 일정과 AI 가이드가 자동으로 준비됩니다.',
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '입력한 정보를 바탕으로 맞춤 케어 일정을 만들어드릴게요.',
-                      style: TextStyle(color: AppColors.gray, fontSize: 15),
+                    const SizedBox(height: 22),
+                    _ProfilePreviewCard(
+                      name: nameController.text.trim().isEmpty
+                          ? '이름을 입력해주세요'
+                          : nameController.text.trim(),
+                      type: type,
+                      age: _ageHint,
+                      photoPath: _pickedPhotoPath,
+                      onPickPhoto: _pickPhoto,
                     ),
-                    const SizedBox(height: 24),
-                    Center(child: _PhotoPickerThumb(
-                      path: _pickedPhotoPath,
-                      onPick: _pickPhoto,
-                    )),
-                    const SizedBox(height: 18),
-                    AppTextField(
-                      label: '보호자 이름 (선택)',
-                      controller: guardianController,
-                      hint: '예: 유경',
-                    ),
-                    FormSection(
-                      title: '반려동물 종류',
-                      child: Wrap(
-                        spacing: 10,
+                    const SizedBox(height: 16),
+                    AppCard(
+                      elevated: false,
+                      child: Column(
                         children: [
-                          SelectablePill(
-                            label: '강아지',
-                            selected: type == '강아지',
-                            onTap: () => setState(() => type = '강아지'),
+                          AppTextField(
+                            label: '보호자 이름',
+                            controller: guardianController,
+                            hint: '선택 입력',
                           ),
-                          SelectablePill(
-                            label: '고양이',
-                            selected: type == '고양이',
-                            onTap: () => setState(() => type = '고양이'),
+                          const SizedBox(height: 18),
+                          AppTextField(
+                            label: '반려동물 이름',
+                            controller: nameController,
+                            hint: '예: 초코',
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    AppTextField(
-                      label: '이름',
-                      controller: nameController,
-                      hint: '예: 초코',
-                    ),
-                    const SizedBox(height: 18),
-                    AppTextField(
-                      label: '품종 (선택)',
-                      controller: breedController,
-                      hint: '예: 말티즈',
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      '생년월일',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15),
-                    ),
-                    const SizedBox(height: 10),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: _pickBirthDate,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 16),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          border: Border.all(color: AppColors.line),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
+                    FormSection(
+                      title: '기본 정보',
+                      child: AppCard(
+                        elevated: false,
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.calendar_today_rounded,
-                                color: AppColors.sage, size: 18),
-                            const SizedBox(width: 12),
-                            Text(
-                              _birthLabel,
-                              style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                SelectablePill(
+                                  label: '강아지',
+                                  selected: type == '강아지',
+                                  onTap: () => setState(() => type = '강아지'),
+                                ),
+                                SelectablePill(
+                                  label: '고양이',
+                                  selected: type == '고양이',
+                                  onTap: () => setState(() => type = '고양이'),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Text(
-                              _ageHint,
-                              style: const TextStyle(
-                                  color: AppColors.gray, fontSize: 13),
+                            const SizedBox(height: 18),
+                            AppTextField(
+                              label: '품종',
+                              controller: breedController,
+                              hint: '선택 입력',
+                            ),
+                            const SizedBox(height: 18),
+                            _DateSelector(
+                              label: '생년월일',
+                              value: _birthLabel,
+                              helper: _ageHint,
+                              onTap: _pickBirthDate,
+                            ),
+                            const SizedBox(height: 18),
+                            AppTextField(
+                              label: '체중(kg)',
+                              controller: weightController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              hint: '선택 입력',
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    AppTextField(
-                      label: '체중(kg, 선택)',
-                      controller: weightController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
-                      hint: '예: 2.1',
-                    ),
                     FormSection(
-                      title: '성별',
-                      child: Wrap(
-                        spacing: 10,
-                        children: [
-                          SelectablePill(
-                            label: '남아',
-                            selected: gender == '남아',
-                            onTap: () => setState(() => gender = '남아'),
-                          ),
-                          SelectablePill(
-                            label: '여아',
-                            selected: gender == '여아',
-                            onTap: () => setState(() => gender = '여아'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    FormSection(
-                      title: '중성화 여부',
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: ['완료', '미완료', '모르겠어요']
-                            .map(
-                              (item) => SelectablePill(
-                                label: item,
-                                selected: neuter == item,
-                                onTap: () => setState(() => neuter = item),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ),
-                    FormSection(
-                      title: '접종 이력 (메모)',
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: ['아직 안 했어요', '일부 완료', '모두 완료', '잘 모르겠어요']
-                            .map(
-                              (item) => SelectablePill(
-                                label: item,
-                                selected: vaccine == item,
-                                onTap: () =>
-                                    setState(() => vaccine = item),
-                              ),
-                            )
-                            .toList(),
+                      title: '케어 상태',
+                      child: AppCard(
+                        elevated: false,
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _ChoiceGroup(
+                              title: '성별',
+                              children: [
+                                SelectablePill(
+                                  label: '남아',
+                                  selected: gender == '남아',
+                                  onTap: () => setState(() => gender = '남아'),
+                                ),
+                                SelectablePill(
+                                  label: '여아',
+                                  selected: gender == '여아',
+                                  onTap: () => setState(() => gender = '여아'),
+                                ),
+                              ],
+                            ),
+                            _ChoiceGroup(
+                              title: '중성화 여부',
+                              children: ['완료', '미완료', '모르겠어요']
+                                  .map(
+                                    (item) => SelectablePill(
+                                      label: item,
+                                      selected: neuter == item,
+                                      onTap: () =>
+                                          setState(() => neuter = item),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                            _ChoiceGroup(
+                              title: '접종 이력',
+                              children:
+                                  ['아직 안 했어요', '일부 완료', '모두 완료', '잘 모르겠어요']
+                                      .map(
+                                        (item) => SelectablePill(
+                                          label: item,
+                                          selected: vaccine == item,
+                                          onTap: () =>
+                                              setState(() => vaccine = item),
+                                        ),
+                                      )
+                                      .toList(),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     FormSection(
                       title: '생활환경',
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          '실내 생활',
-                          '산책 자주 함',
-                          '다견/다묘 가정',
-                          '입양한 지 얼마 안 됨'
-                        ]
-                            .map(
-                              (item) => SelectablePill(
-                                label: item,
-                                selected: environments.contains(item),
-                                onTap: () {
-                                  setState(() {
-                                    environments.contains(item)
-                                        ? environments.remove(item)
-                                        : environments.add(item);
-                                  });
-                                },
-                              ),
-                            )
-                            .toList(),
+                      child: AppCard(
+                        elevated: false,
+                        padding: const EdgeInsets.all(14),
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children:
+                              ['실내 생활', '산책 자주 함', '다견/다묘 가정', '입양한 지 얼마 안 됨']
+                                  .map(
+                                    (item) => SelectablePill(
+                                      label: item,
+                                      selected: environments.contains(item),
+                                      onTap: () {
+                                        setState(() {
+                                          environments.contains(item)
+                                              ? environments.remove(item)
+                                              : environments.add(item);
+                                        });
+                                      },
+                                    ),
+                                  )
+                                  .toList(),
+                        ),
                       ),
                     ),
                     if (errorMsg != null) ...[
@@ -390,8 +393,9 @@ class _PetProfileSetupScreenState extends State<PetProfileSetupScreen> {
                       Text(
                         errorMsg!,
                         style: const TextStyle(
-                            color: AppColors.coral,
-                            fontWeight: FontWeight.w700),
+                          color: AppColors.coral,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 14),
@@ -400,7 +404,7 @@ class _PetProfileSetupScreenState extends State<PetProfileSetupScreen> {
               ),
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(24, 14, 24, 22),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
               decoration: const BoxDecoration(
                 color: AppColors.ivory,
                 border: Border(top: BorderSide(color: AppColors.line)),
@@ -448,49 +452,167 @@ class _PetProfileSetupScreenState extends State<PetProfileSetupScreen> {
   }
 }
 
-class _PhotoPickerThumb extends StatelessWidget {
-  final String? path;
-  final VoidCallback onPick;
-  const _PhotoPickerThumb({required this.path, required this.onPick});
+class _ProfilePreviewCard extends StatelessWidget {
+  final String name;
+  final String type;
+  final String age;
+  final String? photoPath;
+  final VoidCallback onPickPhoto;
+
+  const _ProfilePreviewCard({
+    required this.name,
+    required this.type,
+    required this.age,
+    required this.photoPath,
+    required this.onPickPhoto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPanel(
+      color: AppColors.charcoal,
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onPickPhoto,
+            child: Container(
+              width: 82,
+              height: 82,
+              decoration: BoxDecoration(
+                color: AppColors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.white.withValues(alpha: 0.18),
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: photoPath == null
+                  ? const Icon(
+                      Icons.add_a_photo_outlined,
+                      color: AppColors.white,
+                      size: 28,
+                    )
+                  : Image.file(File(photoPath!), fit: BoxFit.cover),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$type · $age',
+                  style: TextStyle(
+                    color: AppColors.white.withValues(alpha: 0.72),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const StatusChip(label: '맞춤 케어 준비 중'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DateSelector extends StatelessWidget {
+  final String label;
+  final String value;
+  final String helper;
+  final VoidCallback onTap;
+
+  const _DateSelector({
+    required this.label,
+    required this.value,
+    required this.helper,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          onTap: onPick,
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+        ),
+        const SizedBox(height: 10),
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
           child: Container(
-            width: 124,
-            height: 124,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.white,
-              border: Border.all(color: AppColors.line, width: 1.4),
-              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.line),
+              borderRadius: BorderRadius.circular(8),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: path == null
-                ? const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add_a_photo_outlined,
-                            size: 28, color: AppColors.sage),
-                        SizedBox(height: 6),
-                        Text('우리 아이 사진',
-                            style: TextStyle(
-                                color: AppColors.gray, fontSize: 12)),
-                      ],
-                    ),
-                  )
-                : Image.file(File(path!), fit: BoxFit.cover),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today_rounded,
+                  color: AppColors.sage,
+                  size: 18,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  helper,
+                  style: const TextStyle(color: AppColors.gray, fontSize: 13),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          path == null ? '사진을 추가해주세요 (선택)' : '탭해서 다시 고르기',
-          style: const TextStyle(color: AppColors.gray, fontSize: 12),
-        ),
       ],
+    );
+  }
+}
+
+class _ChoiceGroup extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _ChoiceGroup({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          ),
+          const SizedBox(height: 10),
+          Wrap(spacing: 10, runSpacing: 10, children: children),
+        ],
+      ),
     );
   }
 }

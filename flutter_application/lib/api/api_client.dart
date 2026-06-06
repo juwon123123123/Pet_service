@@ -6,10 +6,7 @@ import 'package:intl/intl.dart';
 
 import 'models.dart';
 
-/// API base URL.
-/// 기본값은 배포된 Cloud Run — 클론만 받아 `flutter run` 하면 바로 동작.
-///
-/// 로컬 백엔드로 개발할 때는 dart-define으로 덮어쓰기:
+/// 배포된 Cloud Run 서버를 기본 base URL로 사용.
 ///   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000   (안드 에뮬)
 ///   flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000  (iOS/web/macOS)
 const _kProdBaseUrl = 'https://pet-times-901998453571.asia-northeast3.run.app';

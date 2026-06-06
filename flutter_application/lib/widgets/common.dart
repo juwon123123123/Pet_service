@@ -10,21 +10,22 @@ class AppLogo extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 42,
-          height: 42,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
-            color: AppColors.mint,
-            borderRadius: BorderRadius.circular(15),
+            color: AppColors.charcoal,
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(Icons.pets_rounded, color: AppColors.sage),
+          child: const Icon(Icons.pets_rounded, color: AppColors.white),
         ),
         const SizedBox(width: 10),
         const Text(
           'PET TIMES',
           style: TextStyle(
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.w900,
             color: AppColors.charcoal,
+            letterSpacing: 0,
           ),
         ),
       ],
@@ -39,7 +40,7 @@ class ScreenShell extends StatelessWidget {
   const ScreenShell({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.fromLTRB(24, 22, 24, 24),
+    this.padding = const EdgeInsets.fromLTRB(20, 18, 20, 24),
   });
 
   @override
@@ -69,9 +70,14 @@ class PrimaryButton extends StatelessWidget {
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.sage,
         foregroundColor: AppColors.white,
-        minimumSize: const Size.fromHeight(56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        minimumSize: const Size.fromHeight(54),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        elevation: 0,
+        textStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          fontFamily: 'sans-serif',
+        ),
       ),
       child: loading
           ? const SizedBox(
@@ -91,12 +97,14 @@ class AppCard extends StatelessWidget {
   final Widget child;
   final Color color;
   final EdgeInsetsGeometry padding;
+  final bool elevated;
 
   const AppCard({
     super.key,
     required this.child,
     this.color = AppColors.white,
     this.padding = const EdgeInsets.all(18),
+    this.elevated = true,
   });
 
   @override
@@ -106,9 +114,43 @@ class AppCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.line.withValues(alpha: 0.65)),
-        boxShadow: softShadow,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.line.withValues(alpha: 0.9)),
+        boxShadow: elevated ? softShadow : null,
+      ),
+      child: child,
+    );
+  }
+}
+
+class GlassPanel extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final Color color;
+
+  const GlassPanel({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(18),
+    this.color = AppColors.white,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.white.withValues(alpha: 0.7)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
+        ],
       ),
       child: child,
     );
@@ -142,10 +184,10 @@ class StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
@@ -174,14 +216,14 @@ class SelectablePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(8),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
         decoration: BoxDecoration(
           color: selected ? AppColors.mint : AppColors.white,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: selected ? AppColors.sage : AppColors.line,
             width: selected ? 1.4 : 1,
@@ -260,11 +302,11 @@ class AppTextField extends StatelessWidget {
               vertical: 15,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.line),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.sage, width: 1.5),
             ),
           ),
@@ -297,10 +339,9 @@ class HeaderRow extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontSize: 25),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontSize: 26, height: 1.12),
               ),
               if (subtitle.isNotEmpty) ...[
                 const SizedBox(height: 7),
@@ -313,6 +354,62 @@ class HeaderRow extends StatelessWidget {
           ),
         ),
         action,
+      ],
+    );
+  }
+}
+
+class PageHeader extends StatelessWidget {
+  final String eyebrow;
+  final String title;
+  final String subtitle;
+  final Widget? action;
+
+  const PageHeader({
+    super.key,
+    required this.eyebrow,
+    required this.title,
+    required this.subtitle,
+    this.action,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                eyebrow,
+                style: const TextStyle(
+                  color: AppColors.sage,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontSize: 28, height: 1.08),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.gray,
+                  fontSize: 15,
+                  height: 1.42,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (action != null) ...[const SizedBox(width: 12), action!],
       ],
     );
   }
@@ -345,8 +442,7 @@ class CareTaskItem extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style:
-                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),
         ],

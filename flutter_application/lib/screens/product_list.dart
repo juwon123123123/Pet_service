@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../theme.dart';
+import '../widgets/common.dart';
 import 'product_detail.dart';
 
 final _won = NumberFormat('#,###');
@@ -45,9 +46,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text('상품을 불러오지 못했어요\n$_err',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.coral)),
+            child: Text(
+              '상품을 불러오지 못했어요\n$_err',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.coral),
+            ),
           ),
         );
       }
@@ -57,8 +60,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: Text('등록된 상품이 없어요.',
-              style: TextStyle(color: AppColors.gray)),
+          child: Text('등록된 상품이 없어요.', style: TextStyle(color: AppColors.gray)),
         ),
       );
     }
@@ -66,12 +68,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
       onRefresh: _load,
       color: AppColors.sage,
       child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.72,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          childAspectRatio: 0.68,
         ),
         itemCount: _products!.length,
         itemBuilder: (_, i) => _ProductCard(product: _products![i]),
@@ -87,16 +89,18 @@ class _ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(8),
       onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ProductDetailScreen(product: product),
-        ));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ProductDetailScreen(product: product),
+          ),
+        );
       },
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.line),
           boxShadow: softShadow,
         ),
@@ -105,17 +109,30 @@ class _ProductCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: product.imageUrl.isEmpty
-                  ? const ColoredBox(color: AppColors.mint)
-                  : Image.network(
-                      api.resolveUrl(product.imageUrl),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          const ColoredBox(color: AppColors.mint),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  product.imageUrl.isEmpty
+                      ? const ColoredBox(color: AppColors.mint)
+                      : Image.network(
+                          api.resolveUrl(product.imageUrl),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              const ColoredBox(color: AppColors.mint),
+                        ),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: StatusChip(
+                      label: product.category,
+                      color: AppColors.charcoal,
                     ),
+                  ),
+                ],
+              ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -147,4 +164,3 @@ class _ProductCard extends StatelessWidget {
     );
   }
 }
-

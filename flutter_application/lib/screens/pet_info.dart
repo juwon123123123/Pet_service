@@ -75,9 +75,9 @@ class _PetInfoScreenState extends State<PetInfoScreen> {
       setState(() => _guide = g);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('가이드 생성 실패: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('가이드 생성 실패: $e')));
     } finally {
       if (mounted) setState(() => _loadingGuide = false);
     }
@@ -101,9 +101,9 @@ class _PetInfoScreenState extends State<PetInfoScreen> {
       await petStore.setPet(updated);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('사진 업로드 실패: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('사진 업로드 실패: $e')));
     } finally {
       if (mounted) setState(() => _uploadingPhoto = false);
     }
@@ -121,14 +121,18 @@ class _PetInfoScreenState extends State<PetInfoScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined,
-                  color: AppColors.sage),
+              leading: const Icon(
+                Icons.photo_camera_outlined,
+                color: AppColors.sage,
+              ),
               title: const Text('카메라로 찍기'),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
-                  color: AppColors.sage),
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: AppColors.sage,
+              ),
               title: const Text('앨범에서 고르기'),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
@@ -154,8 +158,7 @@ class _PetInfoScreenState extends State<PetInfoScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('삭제',
-                style: TextStyle(color: AppColors.coral)),
+            child: const Text('삭제', style: TextStyle(color: AppColors.coral)),
           ),
         ],
       ),
@@ -171,9 +174,9 @@ class _PetInfoScreenState extends State<PetInfoScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 실패: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
     }
   }
 
@@ -185,13 +188,19 @@ class _PetInfoScreenState extends State<PetInfoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          HeaderRow(
-            title: guardian.isEmpty ? '안녕하세요' : '안녕하세요, $guardian님',
+          PageHeader(
+            eyebrow: 'PET TIMES',
+            title: guardian.isEmpty ? '오늘의 케어를\n확인해요' : '$guardian님,\n오늘도 가볍게',
             subtitle: pet == null
-                ? '먼저 우리 아이를 등록해주세요.'
-                : '${pet.name}의 정보와 일정을 확인해보세요.',
-            action: IconButton.filledTonal(
+                ? '먼저 우리 아이를 등록하고 맞춤 케어를 시작하세요.'
+                : '${pet.name}에게 필요한 일정과 추천을 모았습니다.',
+            action: IconButton(
               onPressed: _load,
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.white,
+                foregroundColor: AppColors.charcoal,
+                side: const BorderSide(color: AppColors.line),
+              ),
               icon: const Icon(Icons.refresh_rounded),
             ),
           ),
@@ -203,120 +212,24 @@ class _PetInfoScreenState extends State<PetInfoScreen> {
           ),
           if (_err != null) ...[
             const SizedBox(height: 12),
-            Text(_err!,
-                style: const TextStyle(color: AppColors.coral, fontSize: 13)),
+            Text(
+              _err!,
+              style: const TextStyle(color: AppColors.coral, fontSize: 13),
+            ),
           ],
           const SizedBox(height: 18),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionTitle('이번 주 케어'),
-                const SizedBox(height: 14),
-                if (_upcoming == null)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(8),
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                else if (_upcoming!.isEmpty)
-                  const Text(
-                    '이번 주에 예정된 일정이 없어요. 가볍게 컨디션만 확인해주세요.',
-                    style: TextStyle(color: AppColors.gray),
-                  )
-                else
-                  ..._upcoming!.take(3).map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                margin: const EdgeInsets.only(top: 7),
-                                decoration: BoxDecoration(
-                                  color: AppColors.sage,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  '${_md.format(e.dueDate)} · ${e.title}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-              ],
-            ),
+          _WeekCareCard(upcoming: _upcoming),
+          const SizedBox(height: 18),
+          _AiCareCard(
+            guide: _guide,
+            loading: _loadingGuide,
+            pet: pet,
+            onGenerate: _generateGuide,
           ),
           const SizedBox(height: 18),
-          AppCard(
-            color: AppColors.mint,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(child: SectionTitle('AI가 추천하는 케어')),
-                    if (_loadingGuide)
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (_guide == null)
-                  const Text(
-                    'AI 가이드를 아직 만들지 않았어요.\n아래 버튼을 눌러 우리 아이 상태에 맞춘 추천을 받아보세요.',
-                    style: TextStyle(fontSize: 15, height: 1.5),
-                  )
-                else
-                  Text(_guide!.summary,
-                      style: const TextStyle(fontSize: 15, height: 1.5)),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: pet == null ? null : _generateGuide,
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.sage,
-                        padding: EdgeInsets.zero,
-                      ),
-                      child: Text(_guide == null ? 'AI 가이드 만들기' : '다시 생성'),
-                    ),
-                    const SizedBox(width: 14),
-                    if (_guide != null)
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) =>
-                                GuideDetailScreen(guide: _guide!),
-                          ));
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.sage,
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: const Text('자세히 보기'),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          // 메뉴 / 삭제 영역
           AppCard(
             padding: EdgeInsets.zero,
+            elevated: false,
             child: Column(
               children: [
                 _MenuRow(
@@ -374,7 +287,8 @@ class _PhotoPetCard extends StatelessWidget {
         ),
       );
     }
-    return AppCard(
+    return GlassPanel(
+      color: AppColors.charcoal,
       child: Row(
         children: [
           GestureDetector(
@@ -386,7 +300,7 @@ class _PhotoPetCard extends StatelessWidget {
                   child: Container(
                     width: 84,
                     height: 84,
-                    color: const Color(0xFFFFF4ED),
+                    color: AppColors.white.withValues(alpha: 0.12),
                     child: p.photoUrl != null
                         ? Image.network(
                             api.resolveUrl(p.photoUrl!),
@@ -415,7 +329,9 @@ class _PhotoPetCard extends StatelessWidget {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -426,11 +342,14 @@ class _PhotoPetCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(
-                      color: AppColors.sage,
+                      color: AppColors.white,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.camera_alt_rounded,
-                        size: 14, color: Colors.white),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 14,
+                      color: AppColors.sage,
+                    ),
                   ),
                 ),
               ],
@@ -444,21 +363,25 @@ class _PhotoPetCard extends StatelessWidget {
                 Text(
                   p.name,
                   style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.w900),
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.white,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${p.speciesKo} · ${p.ageKo} · ${p.sexKo}',
-                  style: const TextStyle(color: AppColors.gray),
+                  style: TextStyle(
+                    color: AppColors.white.withValues(alpha: 0.72),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 7,
                   runSpacing: 7,
                   children: [
-                    StatusChip(
-                      label: p.ageWeeks < 20 ? '기초접종 시기' : '정기 케어 단계',
-                    ),
+                    StatusChip(label: p.ageWeeks < 20 ? '기초접종 시기' : '정기 케어 단계'),
                     StatusChip(
                       label: p.neutered ? '중성화 완료' : '중성화 미완료',
                       color: p.neutered ? AppColors.green : AppColors.coral,
@@ -470,6 +393,206 @@ class _PhotoPetCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _WeekCareCard extends StatelessWidget {
+  final List<Event>? upcoming;
+
+  const _WeekCareCard({required this.upcoming});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      elevated: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Expanded(child: SectionTitle('이번 주 케어')),
+              Icon(Icons.checklist_rounded, color: AppColors.sage),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (upcoming == null)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (upcoming!.isEmpty)
+            const _EmptyInline(
+              icon: Icons.done_all_rounded,
+              text: '이번 주 예정된 일정이 없어요.',
+            )
+          else
+            ...upcoming!
+                .take(3)
+                .map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: AppColors.mint,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.event_available_rounded,
+                            color: AppColors.sage,
+                            size: 19,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                e.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                _md.format(e.dueDate),
+                                style: const TextStyle(
+                                  color: AppColors.gray,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiCareCard extends StatelessWidget {
+  final Guide? guide;
+  final bool loading;
+  final Pet? pet;
+  final VoidCallback onGenerate;
+
+  const _AiCareCard({
+    required this.guide,
+    required this.loading,
+    required this.pet,
+    required this.onGenerate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      color: AppColors.mint,
+      elevated: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.sage,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(child: SectionTitle('AI 케어 인사이트')),
+              if (loading)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            guide == null
+                ? '아직 맞춤 가이드가 없어요. 프로필을 바탕으로 오늘 필요한 케어 포인트를 정리해볼게요.'
+                : guide!.summary,
+            style: const TextStyle(fontSize: 15, height: 1.5),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              FilledButton(
+                onPressed: pet == null ? null : onGenerate,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.sage,
+                  foregroundColor: AppColors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(guide == null ? '가이드 만들기' : '다시 생성'),
+              ),
+              const SizedBox(width: 10),
+              if (guide != null)
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => GuideDetailScreen(guide: guide!),
+                      ),
+                    );
+                  },
+                  child: const Text('자세히'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyInline extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _EmptyInline({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.sage, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: AppColors.gray,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -491,11 +614,12 @@ class _MenuRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = destructive ? AppColors.coral : AppColors.sage;
     return InkWell(
-      onTap: onTap ??
+      onTap:
+          onTap ??
           () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('다음 업데이트에서 지원돼요.')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('다음 업데이트에서 지원돼요.')));
           },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -509,9 +633,7 @@ class _MenuRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: destructive
-                      ? AppColors.coral
-                      : AppColors.charcoal,
+                  color: destructive ? AppColors.coral : AppColors.charcoal,
                 ),
               ),
             ),
