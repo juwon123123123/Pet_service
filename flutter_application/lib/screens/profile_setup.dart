@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -160,14 +161,32 @@ class _PetProfileSetupScreenState extends State<PetProfileSetupScreen> {
       );
       var pet = await api.createPet(body);
       // 사진 골라뒀으면 등록 직후 업로드 (실패해도 펫 등록은 유지).
+      var photoUploaded = false;
       if (_pickedPhotoPath != null) {
         _setProgress('사진 업로드 중…');
         try {
           pet = await api.uploadPetPhoto(pet.id, _pickedPhotoPath!);
+          photoUploaded = true;
         } catch (e) {
           debugPrint('펫 사진 업로드 실패(무시): $e');
         }
       }
+
+      // ★ AI 피팅 선행 트리거 — 사진이 올라갔으면 합성을 미리 시작해둔다.
+      // POST 자체는 즉시 반환되고 nano-banana는 서버 백그라운드에서 진행되므로,
+      // 사용자가 가이드/캘린더 생성을 기다리는 동안 합성이 미리 돌아 체감 지연이 줄어든다.
+      // fire-and-forget: 실패해도 온보딩 흐름은 막지 않음.
+      if (photoUploaded) {
+        unawaited(
+          api.startGenerations(petId: pet.id, useRegistered: true).catchError(
+            (e) {
+              debugPrint('AI 피팅 선행 생성 실패(무시): $e');
+              return <Generation>[];
+            },
+          ),
+        );
+      }
+
       await petStore.setPet(pet);
       if (guardianController.text.trim().isNotEmpty) {
         await petStore.setGuardianName(guardianController.text.trim());

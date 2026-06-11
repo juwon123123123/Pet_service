@@ -18,6 +18,11 @@ def _vector_column(dim: int):
 engine = create_engine(
     settings.database_url,
     connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
+    # Cloud SQL이 유휴 커넥션을 끊으면 풀에 죽은 연결이 남는다.
+    # pool_pre_ping: 사용 전 가벼운 SELECT 1로 살아있는지 확인 후 죽었으면 자동 재연결.
+    # pool_recycle: 30분 지난 커넥션은 선제적으로 폐기 (서버측 idle timeout 회피).
+    pool_pre_ping=True,
+    pool_recycle=1800,
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()

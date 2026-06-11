@@ -201,7 +201,7 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
                 Text(
                   pet == null
                       ? '먼저 펫을 등록해주세요.'
-                      : '${pet.name}에게 어울릴 옷 5개를 추천하고, 입은 모습을 합성해드려요.',
+                      : '${pet.name}의 등록 사진으로 추천 피팅이 자동 생성돼요.\n다른 사진으로도 입은 모습을 만들어볼 수 있어요.',
                   style: TextStyle(
                     fontSize: 14,
                     color: AppColors.white.withValues(alpha: 0.72),
@@ -209,46 +209,23 @@ class _RecommendGenerateScreenState extends State<RecommendGenerateScreen>
                   ),
                 ),
                 const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _starting || pet == null
-                            ? null
-                            : () => _start(useRegistered: true),
-                        icon: const Icon(Icons.pets_rounded, size: 18),
-                        label: const Text('등록 사진으로'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.white,
-                          side: BorderSide(
-                            color: AppColors.white.withValues(alpha: 0.28),
-                          ),
-                          minimumSize: const Size.fromHeight(48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _starting || pet == null
+                        ? null
+                        : () => _start(useRegistered: false),
+                    icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                    label: const Text('새 사진으로 피팅하기'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.white,
+                      foregroundColor: AppColors.charcoal,
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _starting || pet == null
-                            ? null
-                            : () => _start(useRegistered: false),
-                        icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-                        label: const Text('새 사진 업로드'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.white,
-                          foregroundColor: AppColors.charcoal,
-                          minimumSize: const Size.fromHeight(48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
                 if (_starting) ...[
                   const SizedBox(height: 12),
